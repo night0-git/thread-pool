@@ -1,0 +1,25 @@
+[
+  {
+    "label": "Debug native binary",
+    "build": {
+      "command": "cmake",
+      "args": ["--build", "--preset", "debug", "-j"],
+      "cwd": "$ZED_WORKTREE_ROOT"
+    },
+    "program": "$ZED_WORKTREE_ROOT/bin/debug/concurrent-runtime",
+    "request": "launch",
+    "adapter": "CodeLLDB"
+  },
+
+  {
+    "label": "Debug test binary",
+    "build": {
+      "command": "cmake",
+      "args": ["--build", "--preset", "debug", "-j"],
+      "cwd": "$ZED_WORKTREE_ROOT"
+    },
+    "program": "$ZED_WORKTREE_ROOT/bin/debug/tests",
+    "request": "launch",
+    "adapter": "CodeLLDB"
+  }
+]
