@@ -36,7 +36,7 @@ inline Status Future<T>::get_status() const {
     return state->status;
 }
 
-// Non-blocking poll
+// Non-blocking poll.
 template<class T>
 inline std::optional<T> Future<T>::poll() {
     if (state->status == Status::Ready) {

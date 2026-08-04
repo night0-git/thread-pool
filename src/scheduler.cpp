@@ -1,16 +1,38 @@
 #include "scheduler.h"
 using scheduler::Scheduler;
 
-void Scheduler::run_one() {
-    if (queue.empty()) {
-        return;
+Scheduler::~Scheduler() {
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        shutdown = true;
     }
-    queue.front().execute();
-    queue.pop();
+
+    cv.notify_one();
+
+    if (worker.joinable()) {
+        worker.join();
+    }
 }
 
-void Scheduler::run_all() {
-    while (!queue.empty()) {
-        run_one();
+void Scheduler::worker_loop() {
+    while (true) {
+        Task t;
+        {
+            std::unique_lock<std::mutex> lk(mtx);
+            // Blocks the worker thread (this) until a task is
+            // available or the destructor signals shutdown.
+            cv.wait(lk, [this] {
+                return shutdown || !queue.empty();
+            });
+
+            if (shutdown && queue.empty()) {
+                return;
+            }
+
+            t = std::move(queue.front());
+            queue.pop();
+            lk.unlock();
+        }
+        t.execute();
     }
 }
