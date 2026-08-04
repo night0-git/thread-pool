@@ -14,4 +14,4 @@ add_executable(tests
   ut_future.cpp
   ut_scheduler.cpp
 )
-target_link_libraries(tests PRIVATE core_lib Catch2::Catch2WithMain)
+target_link_libraries(tests PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain)

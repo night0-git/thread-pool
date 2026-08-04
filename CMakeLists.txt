@@ -14,14 +14,11 @@ target_compile_options(project_options INTERFACE
   -Wall -Wextra -Wpedantic
 )
 
-add_library(core_lib
+add_library(${PROJECT_NAME}
   src/scheduler.cpp
 )
-target_include_directories(core_lib PUBLIC include)
-target_compile_features(core_lib PUBLIC cxx_std_23)
-target_link_libraries(core_lib PRIVATE project_options)
-
-add_executable(${PROJECT_NAME} src/main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE core_lib project_options)
+target_include_directories(${PROJECT_NAME} PUBLIC include)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
+target_link_libraries(${PROJECT_NAME} PRIVATE project_options)
 
 add_subdirectory(tests)
