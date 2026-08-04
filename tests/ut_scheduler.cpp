@@ -12,7 +12,7 @@ TEST_CASE("Submit tasks to scheduler and run") {
     });
     REQUIRE(fut1.get_status() == future::Status::Pending);
     REQUIRE(!fut1.poll().has_value());
-    s.run_one();
+    s.run_all();
 
     auto res = fut1.poll();
     REQUIRE(res.has_value());
