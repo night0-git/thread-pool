@@ -6,7 +6,7 @@
       "args": ["--build", "--preset", "debug", "-j"],
       "cwd": "$ZED_WORKTREE_ROOT"
     },
-    "program": "$ZED_WORKTREE_ROOT/bin/debug/concurrent-runtime",
+    "program": "$ZED_WORKTREE_ROOT/bin/debug/task-scheduler",
     "request": "launch",
     "adapter": "CodeLLDB"
   },

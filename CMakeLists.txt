@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.23)
-project(concurrent-runtime LANGUAGES CXX)
+project(task-scheduler LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE
