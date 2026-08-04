@@ -15,7 +15,6 @@ target_compile_options(project_options INTERFACE
 )
 
 add_library(core_lib
-  src/task.cpp
   src/scheduler.cpp
 )
 target_include_directories(core_lib PUBLIC include)
