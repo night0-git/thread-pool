@@ -1,15 +1,24 @@
 #include "scheduler.h"
 using scheduler::Scheduler;
 
+Scheduler::Scheduler(int num_workers) {
+    workers.reserve(num_workers);
+    for (int i = 0; i < num_workers; ++i) {
+        workers.emplace_back(&Scheduler::worker_loop, this);
+    }
+}
+
 Scheduler::~Scheduler() {
     {
         std::lock_guard<std::mutex> lock(mtx);
         shutdown = true;
     }
-    cv.notify_one();
+    cv.notify_all();
 
-    if (worker.joinable()) {
-        worker.join();
+    for (auto& w : workers) {
+        if (w.joinable()) {
+            w.join();
+        }
     }
 }
 
@@ -30,7 +39,6 @@ void Scheduler::worker_loop() {
 
             t = std::move(queue.front());
             queue.pop();
-            lk.unlock();
         }
         t.execute();
     }

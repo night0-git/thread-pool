@@ -6,6 +6,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <vector>
 
 using task::Task;
 using future::Future;
@@ -15,7 +16,7 @@ namespace scheduler {
 class Scheduler {
 private:
     std::queue<Task> queue {};
-    std::thread worker;
+    std::vector<std::thread> workers;
     // Protects queue and shutdown.
     std::mutex mtx;
     // Blocks the worker until a task is available.
@@ -28,7 +29,7 @@ public:
     // We pass as a reference combined with 'this' because
     // worker_loop is a non-static member function and needs
     // and object to operate on.
-    Scheduler() : worker(&Scheduler::worker_loop, this) {};
+    Scheduler(int num_workers);
     ~Scheduler();
 
     template<class Function>
