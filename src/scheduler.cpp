@@ -6,8 +6,11 @@ Scheduler::~Scheduler() {
         std::lock_guard<std::mutex> lock(mtx);
         shutdown = true;
     }
-
     cv.notify_one();
+
+    if (worker.joinable()) {
+        worker.join();
+    }
 }
 
 void Scheduler::worker_loop() {
