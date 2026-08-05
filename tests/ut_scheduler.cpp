@@ -70,36 +70,34 @@ TEST_CASE("Inspect worker task distribution") {
     auto inspect = [](int num_tasks) {
         std::map<std::thread::id, int> worker_task_counts;
 
-        // Ensure s is destroyed before checking worker_task_counts
-        {
-            Scheduler s(8);
-            std::mutex mutex;
-            std::latch finished { num_tasks };
+        Scheduler s(8);
+        std::mutex mutex;
+        std::latch finished { num_tasks };
 
-            for (int i = 0; i < num_tasks; ++i) {
-                s.submit([&worker_task_counts, &mutex, &finished] {
-                    {
-                        std::lock_guard lock(mutex);
-                        ++worker_task_counts[std::this_thread::get_id()];
-                    }
+        for (int i = 0; i < num_tasks; ++i) {
+            s.submit([&worker_task_counts, &mutex, &finished] {
+                {
+                    std::lock_guard lock(mutex);
+                    ++worker_task_counts[std::this_thread::get_id()];
+                }
 
-                    long_computation();
-                    finished.count_down();
-                    return 1;
-                });
-            }
-
-            finished.wait();
+                long_computation();
+                finished.count_down();
+                return 1;
+            });
         }
 
+        finished.wait();
+
+        std::lock_guard lk(mutex);
         INFO("Check active worker count");
         CHECK(worker_task_counts.size() == 8);
         std::println("Total tasks: {}", num_tasks);
         int idx = 0;
         for (const auto& [thread_id, count] : worker_task_counts) {
             std::println("worker {}: {} tasks ({:.0f}%)",
-                         idx++, count,
-                         static_cast<double>(count) / num_tasks * 100.0);
+                idx++, count,
+                static_cast<double>(count) / num_tasks * 100.0);
         }
         std::println("");
     };
