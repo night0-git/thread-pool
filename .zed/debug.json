@@ -21,5 +21,17 @@
     "program": "$ZED_WORKTREE_ROOT/bin/debug/tests",
     "request": "launch",
     "adapter": "CodeLLDB"
+  },
+
+  {
+    "label": "Debug test binary (with TSan)",
+    "build": {
+      "command": "cmake",
+      "args": ["--build", "--preset", "tsan", "-j"],
+      "cwd": "$ZED_WORKTREE_ROOT"
+    },
+    "program": "$ZED_WORKTREE_ROOT/bin/debug/tests",
+    "request": "launch",
+    "adapter": "CodeLLDB"
   }
 ]
