@@ -9,10 +9,10 @@ test: debug
 	./$(DB_TARGET)
 
 debug:
-	cmake --build --preset debug
+	cmake --build --preset debug -j
 
 release:
-	cmake --build --preset release
+	cmake --build --preset release -j
 
 clean:
 	rm -rf bin build
