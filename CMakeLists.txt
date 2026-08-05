@@ -13,6 +13,10 @@ add_library(project_options INTERFACE)
 target_compile_options(project_options INTERFACE
   -Wall -Wextra -Wpedantic
 )
+if (ENABLE_TSAN)
+  target_compile_options(project_options INTERFACE -fsanitize=thread)
+  target_link_options(project_options INTERFACE -fsanitize=thread)
+endif()
 
 add_library(${PROJECT_NAME}
   src/scheduler.cpp

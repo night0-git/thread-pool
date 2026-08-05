@@ -68,26 +68,29 @@ TEST_CASE("Benchmark task execution on multiple workers") {
 
 TEST_CASE("Inspect worker task distribution") {
     auto inspect = [](int num_tasks) {
-        Scheduler s(8);
-
         std::map<std::thread::id, int> worker_task_counts;
-        std::mutex mutex;
-        std::latch finished { num_tasks };
 
-        for (int i = 0; i < num_tasks; ++i) {
-            s.submit([&worker_task_counts, &mutex, &finished] {
-                {
-                    std::lock_guard lock(mutex);
-                    ++worker_task_counts[std::this_thread::get_id()];
-                }
+        // Ensure s is destroyed before checking worker_task_counts
+        {
+            Scheduler s(8);
+            std::mutex mutex;
+            std::latch finished { num_tasks };
 
-                long_computation();
-                finished.count_down();
-                return 1;
-            });
+            for (int i = 0; i < num_tasks; ++i) {
+                s.submit([&worker_task_counts, &mutex, &finished] {
+                    {
+                        std::lock_guard lock(mutex);
+                        ++worker_task_counts[std::this_thread::get_id()];
+                    }
+
+                    long_computation();
+                    finished.count_down();
+                    return 1;
+                });
+            }
+
+            finished.wait();
         }
-
-        finished.wait();
 
         INFO("Check active worker count");
         CHECK(worker_task_counts.size() == 8);
