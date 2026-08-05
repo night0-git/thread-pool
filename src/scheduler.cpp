@@ -8,10 +8,6 @@ Scheduler::~Scheduler() {
     }
 
     cv.notify_one();
-
-    if (worker.joinable()) {
-        worker.join();
-    }
 }
 
 void Scheduler::worker_loop() {

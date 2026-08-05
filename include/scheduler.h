@@ -15,12 +15,14 @@ namespace scheduler {
 class Scheduler {
 private:
     std::queue<Task> queue {};
-    std::jthread worker;
     // Protects queue and shutdown.
     std::mutex mtx;
     // Blocks the worker until a task is available.
     std::condition_variable cv;
     bool shutdown { false };
+    // A jthread should be declared last because class is destructed
+    // from bottom to top.
+    std::jthread worker;
 
     void worker_loop();
 
