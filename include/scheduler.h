@@ -16,7 +16,9 @@ class Scheduler {
 private:
     std::queue<Task> queue {};
     std::jthread worker;
-    std::mutex mtx;    // Protects queue and shutdown.
+    // Protects queue and shutdown.
+    std::mutex mtx;
+    // Blocks the worker until a task is available.
     std::condition_variable cv;
     bool shutdown { false };
 
@@ -30,14 +32,12 @@ public:
     ~Scheduler();
 
     template<class Function>
-    // Function&& is a forward reference that so we
+    // Function&& is a forwarding reference so that we
     // could deduce its type with std::invoke_result_t.
     auto submit(Function&& f);
 };
 
-// f is a forwarding reference (because Function is generic)
-// and it could either be passed an lvalue, const lvalue or
-// rvalue.
+// f could either be passed an lvalue, const lvalue or rvalue.
 template <class Function>
 inline auto Scheduler::submit(Function&& f) {
     using Result = std::invoke_result_t<Function>;
@@ -47,8 +47,7 @@ inline auto Scheduler::submit(Function&& f) {
 
     Task t = Task {
         .execute = [
-            // We use std::forward to preserve value category
-            // for f.
+            // We use std::forward to preserve f's value category
             f = std::forward<Function>(f),
             state
         ]() {
