@@ -41,6 +41,7 @@ public:
 
 template<class T>
 inline Status Future<T>::get_status() const {
+    std::lock_guard lock(state->mtx);
     return state->status;
 }
 
@@ -72,6 +73,7 @@ public:
 };
 
 inline Status Future<void>::get_status() const {
+    std::lock_guard lock(state->mtx);
     return state->status;
 }
 
