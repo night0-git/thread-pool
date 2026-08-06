@@ -9,7 +9,7 @@
 #include <vector>
 
 using task::Task;
-using future::Future;
+using future::Future, future::Promise;
 
 namespace scheduler {
 
@@ -29,7 +29,7 @@ public:
     // We pass as a reference combined with 'this' because
     // worker_loop is a non-static member function and needs
     // and object to operate on.
-    Scheduler(int num_workers);
+    explicit Scheduler(int num_workers);
     ~Scheduler();
 
     template<class Function>
@@ -41,26 +41,31 @@ public:
 // f could either be passed an lvalue, const lvalue or rvalue.
 template <class Function>
 inline auto Scheduler::submit(Function&& f) {
-    using Result = std::invoke_result_t<Function>;
+    using Result = std::invoke_result_t<Function&>;
 
     auto state = std::make_shared<future::State<Result>>();
     Future<Result> fut(state);
+    Promise<Result> prom(state);
 
     Task t = Task {
         .execute = [
             // We use std::forward to preserve f's value category
             f = std::forward<Function>(f),
-            state
-        ]() {
-            Result res = std::invoke(f);
-            state->value = std::move(res);
-            state->status = future::Status::Ready;
+            p = std::move(prom)
+        ]() mutable {
+            if constexpr (std::is_void_v<Result>) {
+                std::invoke(f);
+                p.complete();
+            } else {
+                Result res = std::invoke(f);
+                p.complete(std::move(res));
+            }
         },
     };
 
     {
-        std::lock_guard<std::mutex> lock(mtx);
-        queue.push(t);
+        std::lock_guard lock(mtx);
+        queue.push(std::move(t));
     }
     // Notify the worker thread that a task is available.
     cv.notify_one();

@@ -18,22 +18,24 @@ void long_computation() {
 TEST_CASE("Submit tasks to scheduler") {
     Scheduler s(1);
 
-    INFO("Submit non void function");
-    auto fut1 = s.submit([]() {
+    Future<void> fut1 = s.submit([]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    });
+    Future<int> fut2 = s.submit([]() {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         return 10;
     });
 
-    std::optional<int> res = std::nullopt;
-
+    INFO("Check async execution");
     std::this_thread::sleep_for(std::chrono::milliseconds(450));
-    res = fut1.poll();
-    REQUIRE(!res.has_value());
+    CHECK(!fut1.poll());
+    CHECK(!fut2.poll().has_value());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(550));
-    res = fut1.poll();
-    REQUIRE(res.has_value());
-    REQUIRE(res.value() == 10);
+    CHECK(fut1.poll());
+    std::optional<int> res = fut2.poll();
+    CHECK(res.has_value());
+    CHECK(res.value() == 10);
 }
 
 TEST_CASE("Benchmark task execution on multiple workers") {
