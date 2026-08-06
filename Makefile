@@ -6,12 +6,15 @@ RL_TARGET = bin/release/tests
 all: release
 
 debug:
+	cmake --preset debug
 	cmake --build --preset debug -j
 
 tsan:
+	cmake --preset tsan
 	cmake --build --preset tsan -j
 
 release:
+	cmake --preset release
 	cmake --build --preset release -j
 
 run: $(DB_TARGET)
