@@ -3,6 +3,7 @@
 #include <optional>
 #include <memory>
 #include <mutex>
+#include <condition_variable>
 
 namespace future {
 
@@ -17,12 +18,14 @@ struct State {
     Status status { Status::Pending };
     std::optional<T> value { std::nullopt };
     std::mutex mtx;
+    std::condition_variable cv;
 };
 
 template<>
 struct State<void> {
     Status status { Status::Pending };
     std::mutex mtx;
+    std::condition_variable cv;
 };
 
 template<class T>
@@ -36,7 +39,8 @@ public:
         : state(std::move(state)) {}
 
     Status get_status() const;
-    std::optional<T> poll();
+    T get();
+    std::optional<T> try_get();
 };
 
 template<class T>
@@ -45,9 +49,26 @@ inline Status Future<T>::get_status() const {
     return state->status;
 }
 
-// Non-blocking poll.
 template<class T>
-inline std::optional<T> Future<T>::poll() {
+inline T Future<T>::get() {
+    std::unique_lock lock(state->mtx);
+    if (state->status == Status::Consumed) {
+        throw std::runtime_error("Future already consumed");
+    }
+
+    state->cv.wait(lock, [this] {
+        return state->status == Status::Ready &&
+               state->value.has_value();
+    });
+
+    auto val = std::move(state->value);
+    state->value = std::nullopt;
+    state->status = Status::Consumed;
+    return val.value();
+}
+
+template<class T>
+inline std::optional<T> Future<T>::try_get() {
     std::lock_guard lock(state->mtx);
     if (state->status == Status::Ready) {
         state->status = Status::Consumed;
@@ -69,7 +90,8 @@ public:
         : state(std::move(state)) {}
 
     Status get_status() const;
-    bool poll();
+    void get();
+    bool try_get();
 };
 
 inline Status Future<void>::get_status() const {
@@ -77,8 +99,19 @@ inline Status Future<void>::get_status() const {
     return state->status;
 }
 
-// Non-blocking poll.
-inline bool Future<void>::poll() {
+inline void Future<void>::get() {
+    std::unique_lock lock(state->mtx);
+    if (state->status == Status::Consumed) {
+        throw std::runtime_error("Future already consumed");
+    }
+
+    state->cv.wait(lock, [this] {
+        return state->status == Status::Ready;
+    });
+    state->status = Status::Consumed;
+}
+
+inline bool Future<void>::try_get() {
     std::lock_guard lock(state->mtx);
     if (state->status == Status::Ready) {
         state->status = Status::Consumed;
@@ -106,6 +139,7 @@ inline bool Promise<T>::complete(T value) {
     if (state->status == Status::Pending) {
         state->status = Status::Ready;
         state->value = std::move(value);
+        state->cv.notify_one();
         return true;
     }
     return false;
@@ -128,6 +162,7 @@ inline bool Promise<void>::complete() {
     std::lock_guard lk(state->mtx);
     if (state->status == Status::Pending) {
         state->status = Status::Ready;
+        state->cv.notify_one();
         return true;
     }
     return false;

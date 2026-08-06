@@ -22,18 +22,17 @@ TEST_CASE("Submit tasks to scheduler") {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     });
     Future<int> fut2 = s.submit([]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         return 10;
     });
 
     INFO("Check async execution");
     std::this_thread::sleep_for(std::chrono::milliseconds(450));
-    CHECK(!fut1.poll());
-    CHECK(!fut2.poll().has_value());
+    CHECK_FALSE(fut1.try_get());
+    CHECK_FALSE(fut2.try_get().has_value());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(550));
-    CHECK(fut1.poll());
-    std::optional<int> res = fut2.poll();
+    CHECK(fut1.try_get());
+    std::optional<int> res = fut2.try_get();
     CHECK(res.has_value());
     CHECK(res.value() == 10);
 }
