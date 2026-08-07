@@ -36,7 +36,7 @@ private:
 public:
     Future() = delete;
     explicit Future(std::shared_ptr<State<T>> state)
-        : state(std::move(state)) {}
+    : state(std::move(state)) {}
 
     Status get_status() const;
     T get();
@@ -87,7 +87,7 @@ private:
 public:
     Future() = delete;
     explicit Future(std::shared_ptr<State<void>> state)
-        : state(std::move(state)) {}
+    : state(std::move(state)) {}
 
     Status get_status() const;
     void get();
@@ -128,7 +128,7 @@ private:
 public:
     Promise() = delete;
     explicit Promise(std::shared_ptr<State<T>> state)
-        : state(std::move(state)) {}
+    : state(std::move(state)) {}
 
     bool complete(T value);
 };
@@ -153,7 +153,7 @@ private:
 public:
     Promise() = delete;
     explicit Promise(std::shared_ptr<State<void>> state)
-        : state(std::move(state)) {}
+    : state(std::move(state)) {}
 
     bool complete();
 };
