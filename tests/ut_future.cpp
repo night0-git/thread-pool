@@ -2,7 +2,7 @@
 #include "future.h"
 using future::Future, future::Status, future::Promise;
 
-TEST_CASE("Non-void future complete and poll") {
+TEST_CASE("Non-void future complete and poll", "[future]") {
     auto state = std::make_shared<future::State<int>>();
     Future<int> fut(state);
     Promise<int> prom(state);
@@ -19,7 +19,7 @@ TEST_CASE("Non-void future complete and poll") {
     REQUIRE_THROWS(fut.get());
 }
 
-TEST_CASE("void future complete and poll") {
+TEST_CASE("void future complete and poll", "[future]") {
     auto state = std::make_shared<future::State<void>>();
     Future<void> fut(state);
     Promise<void> prom(state);
@@ -36,7 +36,7 @@ TEST_CASE("void future complete and poll") {
     REQUIRE_THROWS(fut.get());
 }
 
-TEST_CASE("Future get blocking") {
+TEST_CASE("Future get blocking", "[future]") {
     auto state = std::make_shared<future::State<int>>();
     Future<int> fut(state);
     Promise<int> prom(state);

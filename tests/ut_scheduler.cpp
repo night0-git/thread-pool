@@ -15,7 +15,7 @@ void long_computation() {
     }
 }
 
-TEST_CASE("Submit tasks to scheduler") {
+TEST_CASE("Submit tasks to scheduler", "[scheduler]") {
     Scheduler s(1);
 
     Future<void> fut1 = s.submit([]() {
@@ -33,7 +33,7 @@ TEST_CASE("Submit tasks to scheduler") {
     REQUIRE_THROWS(fut2.get());
 }
 
-TEST_CASE("Benchmark task execution on multiple workers") {
+TEST_CASE("Benchmark task execution on multiple workers", "[scheduler]") {
     auto bench = [&](int num_workers) {
         Scheduler s(num_workers);
         std::latch finished { 100 };
@@ -63,7 +63,7 @@ TEST_CASE("Benchmark task execution on multiple workers") {
     };
 }
 
-TEST_CASE("Inspect worker task distribution") {
+TEST_CASE("Inspect worker task distribution", "[scheduler]") {
     auto inspect = [](int num_tasks) {
         std::map<std::thread::id, int> worker_task_counts;
 
