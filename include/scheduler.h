@@ -2,28 +2,32 @@
 
 #include "task.h"
 #include "future.h"
-#include <queue>
-#include <thread>
+#include "worker.h"
 #include <mutex>
 #include <condition_variable>
 #include <vector>
 
 using task::Task;
 using future::Future, future::Promise;
+using worker::Worker;
 
 namespace scheduler {
 
 class Scheduler {
 private:
-    std::queue<Task> queue {};
-    std::vector<std::thread> workers;
-    // Protects queue and shutdown.
+    std::vector<std::unique_ptr<Worker>> workers;
+
+    // Protects shutdown signal and pending task count.
     std::mutex mtx;
     // Blocks the worker until a task is available.
     std::condition_variable cv;
     bool shutdown { false };
+    size_t pending_tasks { 0 };
 
-    void worker_loop();
+    std::atomic<size_t> last_worker_id { SIZE_MAX };
+
+    void enqueue(Task t);
+    void worker_loop(size_t worker_id);
 
 public:
     // We pass as a reference combined with 'this' because
@@ -63,12 +67,8 @@ inline auto Scheduler::submit(Function&& f) {
         },
     };
 
-    {
-        std::lock_guard lock(mtx);
-        queue.push(std::move(t));
-    }
-    // Notify the worker thread that a task is available.
-    cv.notify_one();
+    enqueue(std::move(t));
+
     return fut;
 }
 

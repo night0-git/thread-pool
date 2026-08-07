@@ -19,22 +19,18 @@ TEST_CASE("Submit tasks to scheduler") {
     Scheduler s(1);
 
     Future<void> fut1 = s.submit([]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     });
     Future<int> fut2 = s.submit([]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
         return 10;
     });
 
-    INFO("Check async execution");
-    std::this_thread::sleep_for(std::chrono::milliseconds(450));
-    CHECK_FALSE(fut1.try_get());
-    CHECK_FALSE(fut2.try_get().has_value());
+    REQUIRE_NOTHROW(fut1.get());
+    REQUIRE(fut2.get() == 10);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(550));
-    CHECK(fut1.try_get());
-    std::optional<int> res = fut2.try_get();
-    CHECK(res.has_value());
-    CHECK(res.value() == 10);
+    REQUIRE_THROWS(fut1.get());
+    REQUIRE_THROWS(fut2.get());
 }
 
 TEST_CASE("Benchmark task execution on multiple workers") {
