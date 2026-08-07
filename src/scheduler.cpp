@@ -1,4 +1,5 @@
 #include "scheduler.h"
+#include <endian.h>
 using scheduler::Scheduler;
 
 Scheduler::Scheduler(int num_workers) {
@@ -44,7 +45,7 @@ void Scheduler::enqueue(Task t) {
 
 void Scheduler::worker_loop(size_t worker_id) {
     while (true) {
-        Task t;
+        // Check return condition.
         {
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [this] {
@@ -56,24 +57,48 @@ void Scheduler::worker_loop(size_t worker_id) {
             }
         }
 
+        Task t;
+        bool task_found = false;
+
+        // Check local deque.
         {
-            std::lock_guard<std::mutex> lock(workers[worker_id]->mtx);
-
-            // Currently there is no work stealing yet, so
-            // we simply skip this iteration.
-            if (workers[worker_id]->deque.empty()) {
-                continue;
+            std::lock_guard<std::mutex> lock(
+                workers[worker_id]->mtx
+            );
+            task_found = !workers[worker_id]->deque.empty();
+            if (task_found) {
+                t = std::move(workers[worker_id]->deque.front());
+                workers[worker_id]->deque.pop_front();
             }
-
-            t = std::move(workers[worker_id]->deque.front());
-            workers[worker_id]->deque.pop_front();
         }
 
-        t.execute();
+        // No local task: find and steal task from another worker.
+        if (!task_found) {
+            for (size_t i = 0; i < workers.size(); i++) {
+                if (i == worker_id) {
+                    continue;
+                }
 
-        {
-            std::lock_guard<std::mutex> lock(mtx);
-            pending_tasks--;
+                Worker& w = *workers[i];
+                std::lock_guard<std::mutex> lock(w.mtx);
+                if (!w.deque.empty()) {
+                    t = std::move(w.deque.back());
+                    w.deque.pop_back();
+                    task_found = true;
+                    break;
+                }
+            }
+        }
+
+        if (task_found) {
+            // Task found inherently means a task was popped
+            // from a deque so we decrement the counter here.
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                pending_tasks--;
+            }
+
+            t.execute();
         }
     }
 }
