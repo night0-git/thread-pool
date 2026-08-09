@@ -8,6 +8,12 @@ namespace task {
 }
 using task::Task;
 
+// Test-only global variable to track the number of TaskRing
+// instances, which corresponds to the number of deque resizes.
+#ifdef TEST
+inline std::atomic<int> num_instances { 0 };
+#endif
+
 namespace deque {
 
 class TaskRing {
@@ -21,7 +27,17 @@ private:
 
 public:
     explicit TaskRing(size_t capacity)
-    : cap(capacity) {};
+    : cap(capacity) {
+        #ifdef TEST
+        num_instances.fetch_add(1, std::memory_order_relaxed);
+        #endif
+    };
+
+    #ifdef TEST
+    ~TaskRing() {
+        num_instances.fetch_sub(1, std::memory_order_relaxed);
+    };
+    #endif
 
     size_t capacity() const { return cap; };
 

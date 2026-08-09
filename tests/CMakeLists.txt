@@ -15,4 +15,8 @@ add_executable(tests
   ut_scheduler.cpp
   ut_deque.cpp
 )
-target_link_libraries(tests PRIVATE ${PROJECT_NAME} Catch2::Catch2WithMain)
+target_link_libraries(tests PRIVATE
+  ${PROJECT_NAME}
+  Catch2::Catch2WithMain
+)
+target_compile_definitions(tests PRIVATE TEST)
