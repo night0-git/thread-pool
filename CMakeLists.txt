@@ -20,6 +20,8 @@ endif()
 
 add_library(${PROJECT_NAME}
   src/scheduler.cpp
+  src/deque/ring_buffer.cpp
+  src/deque/deque.cpp
 )
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
