@@ -18,24 +18,30 @@ private:
     // participates in updating top on the final item race.
     alignas(CACHE_LINE) std::atomic<size_t> top { 0 };
 
+    // The newest buffer.
     // Used to manage buffer lifetime, once this deque is
     // destroyed, all the old buffers (from resizes) are
-    // destroyed through the chain.
-    std::unique_ptr<TaskRing> buf_obj;
-    // Reference to the newest buffer, used by thieves to
-    // perform atomic operations.
-    std::atomic<TaskRing*> buf_ref;
+    // destroyed through the chain starting from this.
+    // Because only the owner accesses latest_buf, it does
+    // not need to be atomic.
+    std::unique_ptr<TaskRing> latest_buf;
+    // The atomically published buffer. Because the owner can
+    // replace the buffer during resizing this may not point
+    // to the latest buffer (latest_buf).
+    std::atomic<TaskRing*> buf_ref { latest_buf.get() };
 
 public:
     explicit TaskDeque(ptrdiff_t capacity)
-    : buf_obj(std::make_unique<TaskRing>(capacity)) {}
+    : latest_buf(std::make_unique<TaskRing>(capacity)) {}
 
     // Owner only: push to bottom.
-    [[nodiscard]] bool push(std::unique_ptr<Task> task);
+    void push(std::unique_ptr<Task> task);
     // Owner only: pop from bottom.
     [[nodiscard]] std::unique_ptr<Task> pop();
     // Thieves only: pop from top.
     [[nodiscard]] std::unique_ptr<Task> steal();
+
+    size_t capacity() const { return latest_buf->capacity(); }
 };
 
 }

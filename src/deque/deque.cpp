@@ -4,24 +4,26 @@
 using deque::TaskDeque;
 using task::Task;
 
-bool TaskDeque::push(std::unique_ptr<Task> task) {
+void TaskDeque::push(std::unique_ptr<Task> task) {
     const size_t b = bottom.load(utils::RELAXED);
     const size_t t = top.load(utils::ACQUIRE);
 
     auto* buf = buf_ref.load(utils::RELAXED);
 
-    // Currently we make the deque bounded by capacity.
-    // Pushing with no slot left returns false.
+    // Grow the buffer.
     if (b - t >= buf->capacity()) {
-        return false;
+        latest_buf = TaskRing::grow(std::move(latest_buf), t, b);
+        // Any thieves currently using buf_ref will see
+        // the old address, which is valid because we do
+        // not destroy it.
+        buf_ref.store(latest_buf.get(), utils::RELEASE);
+        buf = latest_buf.get();
     }
 
     buf->put(b, task.release());
     // Publish the push, and ensure that the pushed value
     // is visible to thieves.
     bottom.store(b + 1, utils::RELEASE);
-
-    return true;
 }
 
 std::unique_ptr<Task> TaskDeque::pop() {
@@ -30,7 +32,7 @@ std::unique_ptr<Task> TaskDeque::pop() {
         return nullptr;
     }
 
-    auto* buf = buf_ref.load(utils::RELAXED);
+    auto* buf = buf_ref.load(utils::ACQUIRE);
 
     // Publish the pop beforehand to ensure correctness for
     // later operations
@@ -65,7 +67,7 @@ std::unique_ptr<Task> TaskDeque::pop() {
 std::unique_ptr<Task> TaskDeque::steal() {
     size_t t = top.load(utils::ACQUIRE);
 
-    auto buf = buf_ref.load(utils::RELAXED);
+    auto buf = buf_ref.load(utils::ACQUIRE);
 
     std::atomic_thread_fence(utils::SEQ_CST);
     const size_t b = bottom.load(utils::ACQUIRE);

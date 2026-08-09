@@ -1,0 +1,55 @@
+#include "utils.h"
+#include "deque/deque.h"
+#include "task.h"
+#include <thread>
+#include <mutex>
+#include <vector>
+#include <latch>
+
+using deque::TaskDeque;
+using task::TaskAction, task::Task;
+
+TEST_CASE("Deque operations and resize", "[deque]") {
+    for (int i = 0; i < 100; i++) {
+        constexpr size_t num_tasks = 1000;
+        constexpr size_t capacity = num_tasks - 1;
+        TaskDeque deque(capacity);
+
+        TaskAction foo_action = [] {
+            int a = 5;
+        };
+
+        for (int i = 0; i < num_tasks; i++) {
+            deque.push(std::make_unique<Task>(foo_action));
+        }
+        CHECK(deque.capacity() == capacity * 2);
+
+        std::mutex mtx;
+        std::vector<std::unique_ptr<Task>> claimed_tasks;
+
+        std::latch latch(3);
+
+        auto steal_tasks = [&](TaskDeque& deque) {
+            latch.arrive_and_wait();
+            while (auto task = deque.steal()) {
+                std::lock_guard lock(mtx);
+                claimed_tasks.push_back(std::move(task));
+            }
+        };
+
+        std::thread t1(steal_tasks, std::ref(deque));
+        std::thread t2(steal_tasks, std::ref(deque));
+
+        latch.arrive_and_wait();
+        while (auto task = deque.pop()) {
+            std::lock_guard lock(mtx);
+            claimed_tasks.push_back(std::move(task));
+        }
+
+        t1.join();
+        t2.join();
+
+        REQUIRE(claimed_tasks.size() == num_tasks);
+        REQUIRE_FALSE(deque.pop());
+    }
+}

@@ -33,9 +33,10 @@ public:
         return slots[index % cap].load(utils::RELAXED);
     };
 
-    [[nodiscard]] TaskRing* grown(
+    [[nodiscard]] static std::unique_ptr<TaskRing> grow(
+        std::unique_ptr<TaskRing> old_ring,
         size_t top, size_t bottom
-    ) const;
+    );
 };
 
 }
