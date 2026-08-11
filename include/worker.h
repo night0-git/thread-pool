@@ -1,20 +1,22 @@
 #pragma once
 
+#include "deque/ring_buffer.h"
 #include "task.h"
+#include "deque/deque.h"
 #include <thread>
-#include <deque>
-#include <mutex>
+
 using task::Task;
+using deque::TaskDeque;
 
 namespace worker {
 
 struct Worker {
     size_t id;
-    std::deque<Task> deque;
-    std::mutex mtx;
+    TaskDeque deque;
     std::thread thread;
 
-    explicit Worker(size_t id) : id(id) {};
+    explicit Worker(size_t id, size_t deque_capacity)
+    : id(id), deque(deque_capacity) {};
 };
 
 }

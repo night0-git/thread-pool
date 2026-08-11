@@ -4,8 +4,11 @@ using scheduler::Scheduler;
 
 Scheduler::Scheduler(int num_workers) {
     workers.reserve(num_workers);
+    constexpr size_t worker_deque_cap = 1024;
     for (int i = 0; i < num_workers; ++i) {
-        workers.emplace_back(std::make_unique<Worker>(i));
+        workers.emplace_back(std::make_unique<Worker>(
+            i, worker_deque_cap
+        ));
         workers[i]->thread = std::thread(
             &Scheduler::worker_loop, this, i
         );
@@ -26,20 +29,14 @@ Scheduler::~Scheduler() {
     }
 }
 
-void Scheduler::enqueue(Task t) {
-    // Assign the task to a worker in a round robin manner.
-    size_t id = last_worker_id.fetch_add(1) % workers.size();
-    {
-        // Acquire the worker's internal mutex to access its deque.
-        std::lock_guard lock(workers[id]->mtx);
-        workers[id]->deque.push_front(std::move(t));
-    }
+void Scheduler::enqueue(std::unique_ptr<Task> t) {
+    injector.push(std::move(t));
 
     {
-        // Acquire the scheduler's mutex to update pending tasks.
         std::lock_guard lock(mtx);
         pending_tasks++;
     }
+
     cv.notify_one();
 }
 
@@ -57,40 +54,40 @@ void Scheduler::worker_loop(size_t worker_id) {
             }
         }
 
-        Task t;
-        bool task_found = false;
+        std::unique_ptr<Task> t;
 
-        // Check local deque.
-        {
-            std::lock_guard<std::mutex> lock(
-                workers[worker_id]->mtx
-            );
-            task_found = !workers[worker_id]->deque.empty();
-            if (task_found) {
-                t = std::move(workers[worker_id]->deque.front());
-                workers[worker_id]->deque.pop_front();
-            }
-        }
+        // Source 1: Check local deque.
+        t = workers[worker_id]->deque.pop();
 
-        // No local task: find and steal task from another worker.
-        if (!task_found) {
-            for (size_t i = 0; i < workers.size(); i++) {
-                if (i == worker_id) {
-                    continue;
-                }
-
-                Worker& w = *workers[i];
-                std::lock_guard<std::mutex> lock(w.mtx);
-                if (!w.deque.empty()) {
-                    t = std::move(w.deque.back());
-                    w.deque.pop_back();
-                    task_found = true;
+        // Source 2: Inject tasks from global pool in a batch.
+        if (!t && (t = injector.steal())) {
+            // Prepare this worker with more tasks.
+            size_t batch_size = 8;
+            for (size_t i = 0; i < batch_size; i++) {
+                if (auto stolen = injector.steal()) {
+                    workers[worker_id]->deque.push(
+                        std::move(stolen)
+                    );
+                } else {
                     break;
                 }
             }
         }
 
-        if (task_found) {
+        // Source 3: Steal task from another worker.
+        if (!t) {
+            for (size_t i = 0; i < workers.size(); i++) {
+                if (i == worker_id) {
+                    continue;
+                }
+
+                if ((t = workers[i]->deque.steal())) {
+                    break;
+                }
+            }
+        }
+
+        if (t) {
             // Task found inherently means a task was popped
             // from a deque so we decrement the counter here.
             {
@@ -98,7 +95,7 @@ void Scheduler::worker_loop(size_t worker_id) {
                 pending_tasks--;
             }
 
-            t.execute();
+            t->execute();
         }
     }
 }

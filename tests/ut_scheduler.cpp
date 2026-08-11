@@ -34,11 +34,11 @@ TEST_CASE("Submit tasks to scheduler", "[scheduler]") {
 }
 
 TEST_CASE("Benchmark task execution on multiple workers", "[scheduler]") {
-    auto bench = [&](int num_workers) {
+    auto bench = [&](int num_workers, int num_tasks) {
         Scheduler s(num_workers);
-        std::latch finished { 100 };
+        std::latch finished { num_tasks };
 
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < num_tasks; i++) {
             s.submit([&finished] {
                 long_computation();
                 finished.count_down();
@@ -49,33 +49,56 @@ TEST_CASE("Benchmark task execution on multiple workers", "[scheduler]") {
         finished.wait();
     };
 
-    BENCHMARK("Execute 100 tasks with 1 workers") {
-        return bench(1);
-    };
-    BENCHMARK("Execute 100 tasks with 2 workers") {
-        return bench(2);
-    };
-    BENCHMARK("Execute 100 tasks with 4 workers") {
-        return bench(4);
-    };
-    BENCHMARK("Execute 100 tasks with 8 workers") {
-        return bench(8);
-    };
+    SECTION("Execute 100 tasks") {
+        BENCHMARK("Execute 100 tasks with 2 workers") {
+            return bench(2, 100);
+        };
+        BENCHMARK("Execute 100 tasks with 4 workers") {
+            return bench(4, 100);
+        };
+        BENCHMARK("Execute 100 tasks with 8 workers") {
+            return bench(8, 100);
+        };
+        BENCHMARK("Execute 100 tasks with 16 workers") {
+            return bench(16, 100);
+        };
+    }
+
+    SECTION("Execute 1000 tasks") {
+        BENCHMARK("Execute 1000 tasks with 4 workers") {
+            return bench(4, 1000);
+        };
+        BENCHMARK("Execute 1000 tasks with 8 workers") {
+            return bench(8, 1000);
+        };
+        BENCHMARK("Execute 1000 tasks with 16 workers") {
+            return bench(16, 1000);
+        };
+    }
+
+    SECTION("Execute 1000 tasks") {
+        BENCHMARK("Execute 2000 tasks with 8 workers") {
+            return bench(8, 1000);
+        };
+        BENCHMARK("Execute 2000 tasks with 16 workers") {
+            return bench(16, 1000);
+        };
+    }
 }
 
 TEST_CASE("Inspect worker task distribution", "[scheduler]") {
     auto inspect = [](int num_tasks) {
-        std::map<std::thread::id, int> worker_task_counts;
+        std::map<std::thread::id, int> num_worker_tasks;
 
         Scheduler s(8);
         std::mutex mutex;
         std::latch finished { num_tasks };
 
-        for (int i = 0; i < num_tasks; ++i) {
-            s.submit([&worker_task_counts, &mutex, &finished] {
+        for (int i = 0; i < num_tasks; i++) {
+            s.submit([&num_worker_tasks, &mutex, &finished] {
                 {
                     std::lock_guard lock(mutex);
-                    ++worker_task_counts[std::this_thread::get_id()];
+                    num_worker_tasks[std::this_thread::get_id()]++;
                 }
 
                 long_computation();
@@ -88,10 +111,10 @@ TEST_CASE("Inspect worker task distribution", "[scheduler]") {
 
         std::lock_guard lk(mutex);
         INFO("Check active worker count");
-        CHECK(worker_task_counts.size() == 8);
+        CHECK(num_worker_tasks.size() == 8);
         std::println("Total tasks: {}", num_tasks);
         int idx = 0;
-        for (const auto& [thread_id, count] : worker_task_counts) {
+        for (const auto& [thread_id, count] : num_worker_tasks) {
             std::println("worker {}: {} tasks ({:.0f}%)",
                 idx++, count,
                 static_cast<double>(count) / num_tasks * 100.0);

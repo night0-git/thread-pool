@@ -3,6 +3,7 @@
 #include "task.h"
 #include "future.h"
 #include "worker.h"
+#include "deque/deque.h"
 #include <mutex>
 #include <condition_variable>
 #include <vector>
@@ -10,23 +11,27 @@
 using task::Task;
 using future::Future, future::Promise;
 using worker::Worker;
+using deque::TaskDeque;
 
 namespace scheduler {
+
+constexpr size_t DEQUE_CAPACITY = 1024;
 
 class Scheduler {
 private:
     std::vector<std::unique_ptr<Worker>> workers;
+
+    TaskDeque injector { DEQUE_CAPACITY };
 
     // Protects shutdown signal and pending task count.
     std::mutex mtx;
     // Blocks the worker until a task is available.
     std::condition_variable cv;
     bool shutdown { false };
+    // Number of pending tasks across all workers and injector.
     size_t pending_tasks { 0 };
 
-    std::atomic<size_t> last_worker_id { SIZE_MAX };
-
-    void enqueue(Task t);
+    void enqueue(std::unique_ptr<Task> t);
     void worker_loop(size_t worker_id);
 
 public:
@@ -51,7 +56,7 @@ inline auto Scheduler::submit(Function&& f) {
     Future<Result> fut(state);
     Promise<Result> prom(state);
 
-    Task t = Task {
+    Task* t = new Task {
         .execute = [
             // We use std::forward to preserve f's value category
             f = std::forward<Function>(f),
@@ -67,7 +72,7 @@ inline auto Scheduler::submit(Function&& f) {
         },
     };
 
-    enqueue(std::move(t));
+    enqueue(std::unique_ptr<Task>(t));
 
     return fut;
 }
