@@ -1,5 +1,6 @@
 #include "utils.h"
 #include "future.h"
+
 using future::Future, future::Status, future::Promise;
 
 TEST_CASE("Non-void future complete and poll", "[future]") {

@@ -1,11 +1,9 @@
 #include "utils.h"
-#include "scheduler.h"
+#include "thread_pool.h"
 #include <chrono>
-#include <map>
-#include <print>
 #include <latch>
 
-using scheduler::Scheduler;
+using thread_pool::ThreadPool;
 
 void long_computation() {
     volatile std::uint64_t result = 0;
@@ -15,13 +13,13 @@ void long_computation() {
     }
 }
 
-TEST_CASE("Submit tasks to scheduler", "[scheduler]") {
-    Scheduler s(1);
+TEST_CASE("Submit tasks to thread pool", "[thread-pool]") {
+    ThreadPool pool(1);
 
-    Future<void> fut1 = s.submit([]() {
+    Future<void> fut1 = pool.submit([]() {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     });
-    Future<int> fut2 = s.submit([]() {
+    Future<int> fut2 = pool.submit([]() {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
         return 10;
     });
@@ -33,13 +31,13 @@ TEST_CASE("Submit tasks to scheduler", "[scheduler]") {
     REQUIRE_THROWS(fut2.get());
 }
 
-TEST_CASE("Benchmark task execution on multiple workers", "[scheduler]") {
+TEST_CASE("Benchmark task execution on multiple workers", "[thread-pool]") {
     auto bench = [&](int num_workers, int num_tasks) {
-        Scheduler s(num_workers);
+        ThreadPool pool(num_workers);
         std::latch finished { num_tasks };
 
         for (int i = 0; i < num_tasks; i++) {
-            s.submit([&finished] {
+            pool.submit([&finished] {
                 long_computation();
                 finished.count_down();
                 return 1;
@@ -84,44 +82,4 @@ TEST_CASE("Benchmark task execution on multiple workers", "[scheduler]") {
             return bench(16, 1000);
         };
     }
-}
-
-TEST_CASE("Inspect worker task distribution", "[scheduler]") {
-    auto inspect = [](int num_tasks) {
-        std::map<std::thread::id, int> num_worker_tasks;
-
-        Scheduler s(8);
-        std::mutex mutex;
-        std::latch finished { num_tasks };
-
-        for (int i = 0; i < num_tasks; i++) {
-            s.submit([&num_worker_tasks, &mutex, &finished] {
-                {
-                    std::lock_guard lock(mutex);
-                    num_worker_tasks[std::this_thread::get_id()]++;
-                }
-
-                long_computation();
-                finished.count_down();
-                return 1;
-            });
-        }
-
-        finished.wait();
-
-        std::lock_guard lk(mutex);
-        INFO("Check active worker count");
-        CHECK(num_worker_tasks.size() == 8);
-        std::println("Total tasks: {}", num_tasks);
-        int idx = 0;
-        for (const auto& [thread_id, count] : num_worker_tasks) {
-            std::println("worker {}: {} tasks ({:.0f}%)",
-                idx++, count,
-                static_cast<double>(count) / num_tasks * 100.0);
-        }
-        std::println("");
-    };
-    inspect(100);
-    inspect(1000);
-    inspect(10000);
 }

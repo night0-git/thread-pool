@@ -12,8 +12,8 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(tests
   ut_future.cpp
-  ut_scheduler.cpp
   ut_deque.cpp
+  it_thread_pool.cpp
 )
 target_link_libraries(tests PRIVATE
   ${PROJECT_NAME}

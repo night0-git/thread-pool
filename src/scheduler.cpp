@@ -9,6 +9,9 @@ Scheduler::Scheduler(int num_workers) {
         workers.emplace_back(std::make_unique<Worker>(
             i, worker_deque_cap
         ));
+        // We pass as a reference combined with 'this' because
+        // worker_loop is a non-static member function and needs
+        // and object to operate on.
         workers[i]->thread = std::thread(
             &Scheduler::worker_loop, this, i
         );
