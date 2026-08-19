@@ -4,8 +4,6 @@
 #include "future.h"
 #include "worker.h"
 #include "deque/deque.h"
-#include <mutex>
-#include <condition_variable>
 #include <vector>
 
 using task::Task;
@@ -23,13 +21,9 @@ private:
 
     TaskDeque injector { DEQUE_CAPACITY };
 
-    // Protects shutdown signal and pending task count.
-    std::mutex mtx;
-    // Blocks the worker until a task is available.
-    std::condition_variable cv;
-    bool shutdown { false };
-    // Number of pending tasks across all workers and injector.
-    size_t pending_tasks { 0 };
+    std::atomic<uint32_t> state { 0 };
+    static constexpr uint32_t SHUTDOWN_BIT = 1u << 31;
+    static constexpr uint32_t COUNT_MASK = ~SHUTDOWN_BIT;
 
     void worker_loop(size_t worker_id);
 

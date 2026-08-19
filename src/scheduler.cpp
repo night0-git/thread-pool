@@ -19,11 +19,8 @@ Scheduler::Scheduler(int num_workers) {
 }
 
 Scheduler::~Scheduler() {
-    {
-        std::lock_guard<std::mutex> lock(mtx);
-        shutdown = true;
-    }
-    cv.notify_all();
+    state.fetch_or(SHUTDOWN_BIT, std::memory_order_release);
+    state.notify_all();
 
     for (auto& w : workers) {
         if (w->thread.joinable()) {
@@ -35,26 +32,30 @@ Scheduler::~Scheduler() {
 void Scheduler::enqueue(std::unique_ptr<Task> t) {
     injector.push(std::move(t));
 
-    {
-        std::lock_guard lock(mtx);
-        pending_tasks++;
-    }
+    state.fetch_add(1, std::memory_order_release);
 
-    cv.notify_one();
+    state.notify_one();
 }
 
 void Scheduler::worker_loop(size_t worker_id) {
     while (true) {
         // Check return condition.
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            cv.wait(lock, [this] {
-                return shutdown || pending_tasks > 0;
-            });
+        while(true) {
+            uint32_t s = state.load(std::memory_order_acquire);
 
-            if (shutdown && pending_tasks == 0) {
+            // Check shutdown signal.
+            if ((s & SHUTDOWN_BIT) != 0) {
                 return;
             }
+
+            // Check pending tasks.
+            if ((s & COUNT_MASK) != 0) {
+                break;
+            }
+
+            // After this unblocks, another while loop will check
+            // the state again, protecting against spurious wakeups.
+            state.wait(s, std::memory_order_acquire);
         }
 
         std::unique_ptr<Task> t;
@@ -93,10 +94,7 @@ void Scheduler::worker_loop(size_t worker_id) {
         if (t) {
             // Task found inherently means a task was popped
             // from a deque so we decrement the counter here.
-            {
-                std::lock_guard<std::mutex> lock(mtx);
-                pending_tasks--;
-            }
+            state.fetch_sub(1, std::memory_order_release);
 
             t->execute();
         }

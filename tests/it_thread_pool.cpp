@@ -83,3 +83,76 @@ TEST_CASE("Benchmark task execution on multiple workers", "[thread-pool]") {
         };
     }
 }
+
+TEST_CASE("Workers wake correctly from scheduler state",
+          "[thread-pool][atomic-state]") {
+    constexpr size_t num_workers = 4;
+    constexpr size_t num_rounds = 100;
+    constexpr size_t tasks_per_round = 16;
+
+    ThreadPool pool(num_workers);
+
+    std::atomic<size_t> completed { 0 };
+
+    for (size_t round = 0; round < num_rounds; round++) {
+        std::vector<Future<void>> futures;
+        futures.reserve(tasks_per_round);
+
+        for (size_t i = 0; i < tasks_per_round; i++) {
+            futures.push_back(pool.submit([&completed] {
+                completed.fetch_add(1, std::memory_order_relaxed);
+            }));
+        }
+
+        // Force every task in this round to complete before
+        // submitting the next round. This repeatedly lets the
+        // scheduler reach state == 0 and workers go back to wait().
+        for (auto& future : futures) {
+            REQUIRE_NOTHROW(future.get());
+        }
+
+        REQUIRE(
+            completed.load(std::memory_order_relaxed)
+            == (round + 1) * tasks_per_round
+        );
+
+        // Give idle workers an opportunity to enter atomic::wait()
+        // before the next batch is submitted.
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(1)
+        );
+    }
+
+    REQUIRE(
+        completed.load(std::memory_order_relaxed)
+        == num_rounds * tasks_per_round
+    );
+}
+
+TEST_CASE("Scheduler executes every task exactly once",
+          "[thread-pool][atomic-state]") {
+    constexpr size_t num_workers = 8;
+    constexpr size_t num_tasks = 10'000;
+
+    ThreadPool pool(num_workers);
+
+    std::atomic<size_t> completed{0};
+
+    std::vector<Future<void>> futures;
+    futures.reserve(num_tasks);
+
+    for (size_t i = 0; i < num_tasks; i++) {
+        futures.push_back(pool.submit([&completed] {
+            completed.fetch_add(1, std::memory_order_relaxed);
+        }));
+    }
+
+    for (auto& future : futures) {
+        REQUIRE_NOTHROW(future.get());
+    }
+
+    REQUIRE(
+        completed.load(std::memory_order_relaxed)
+        == num_tasks
+    );
+}
