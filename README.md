@@ -4,7 +4,7 @@ This is an educational work-stealing thread pool in C++ for me to learn more abo
 
 # Project overview
 
-The interface provided is simply a `ThreadPool` for user to submit tasks to be executed on the background.
+The interface provided is simply a `ThreadPool` for user to submit tasks to be executed on the background, and a `Future` type to poll the result of the task.
 
 The core mechanic of task allocation is that a thread will try to steal from other threads after it has exhausted its own pool. A lock-free single producer - multiple consumer (SPMC) deque is used to hold tasks, which was the hardest part to implement.
 
