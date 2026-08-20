@@ -8,10 +8,32 @@ The interface provided is simply a `ThreadPool` for user to submit tasks to be e
 
 The core mechanic of task allocation is that a thread will try to steal from other threads after it has exhausted its own pool. A lock-free single producer - multiple consumer (SPMC) deque is used to hold tasks, which was the hardest part to implement.
 
+# Usage
+The library could be installed via CMake:
+```CMake
+find_package(thread-pool REQUIRED)
+
+add_executable(<your executable> <source files>)
+target_link_libraries(<your executable> PRIVATE thread_pool::thread_pool)
+```
+Or you could use FetchContent:
+```CMake
+include(FetchContent)
+
+FetchContent_Declare(
+    thread_pool
+    GIT_REPOSITORY https://github.com/night0-git/thread-pool.git
+)
+FetchContent_MakeAvailable(thread_pool)
+
+add_executable(<your executable> <source files>)
+target_link_libraries(<your executable> PRIVATE thread_pool::thread_pool)
+```
+
 # Implementation details
 >This part is for those who may be insterested in how the code works (or for myself in the future).
 
-1. **Custom future**
+### 1. Custom future
 
 A simplified version of the standard library's `future` and `promise` is implemented for this project: `Future` and `Promise`.
 
@@ -19,7 +41,7 @@ How they work (together): A `Future` and a `Promise` share a unified `State` whi
 
 A future is the result of a submitted task, so it may not contain a value (void). In C++ this is handled through 'template specialization' for `void` type.
 
-2. **Lock-free SPMC deque**
+### 2. Lock-free SPMC deque
 
 Also called a Chase-Lev deque, it is a double-ended queue implemented purely with atomic primitives, which makes it completely thread-safe without a mutex.
 
@@ -27,7 +49,7 @@ A deque provides a `pop`/`push` method that only the owner thread can use to tak
 
 The implementation is highly formulated, revolving around the 'memory ordering' property of the CPU.
 
-3. **Scheduler and thread pool**
+### 3. Scheduler and thread pool
 
 A `Scheduler` basically contains a number of 'workers', each of which corresponds to a thread and has its own task pool. Internally the it has a global lock-free deque where tasks will all be submitted to. The `Scheduler` is responsible for managing the lifecycle of the worker threads and allocating tasks across all workers.
 
