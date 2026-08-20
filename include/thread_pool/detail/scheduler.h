@@ -1,13 +1,11 @@
 #pragma once
 
-#include "task.h"
-#include "future.h"
-#include "worker.h"
-#include "deque/deque.h"
+#include <thread_pool/detail/task.h>
+#include <thread_pool/detail/worker.h>
+#include <thread_pool/detail/deque.h>
 #include <vector>
 
 using task::Task;
-using future::Future, future::Promise;
 using worker::Worker;
 using deque::TaskDeque;
 

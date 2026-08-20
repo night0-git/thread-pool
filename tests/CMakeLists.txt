@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.23)
 
-Include(FetchContent)
+include(FetchContent)
 
 FetchContent_Declare(
   Catch2
@@ -16,7 +16,10 @@ add_executable(tests
   it_thread_pool.cpp
 )
 target_link_libraries(tests PRIVATE
-  ${PROJECT_NAME}
+  thread_pool
   Catch2::Catch2WithMain
+)
+target_include_directories(tests PRIVATE
+  ${CMAKE_SOURCE_DIR}/src
 )
 target_compile_definitions(tests PRIVATE TEST)

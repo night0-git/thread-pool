@@ -1,4 +1,4 @@
-#include "scheduler.h"
+#include <thread_pool/detail/scheduler.h>
 #include <endian.h>
 using scheduler::Scheduler;
 

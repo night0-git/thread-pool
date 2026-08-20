@@ -1,6 +1,6 @@
 #include "utils.h"
-#include "deque/deque.h"
-#include "task.h"
+#include <thread_pool/detail/deque.h>
+#include <thread_pool/detail/task.h>
 #include "deque/ring_buffer.h"
 #include <thread>
 #include <mutex>

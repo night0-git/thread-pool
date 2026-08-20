@@ -1,6 +1,7 @@
-#include "scheduler.h"
+#include <thread_pool/detail/scheduler.h>
 
 using scheduler::Scheduler;
+using future::Promise;
 
 namespace thread_pool {
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ring_buffer.h"
+#include "deque/ring_buffer.h"
 #include <atomic>
 
 namespace deque {

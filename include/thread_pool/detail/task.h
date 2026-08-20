@@ -1,6 +1,6 @@
 #pragma once
 
-#include "future.h"
+#include <thread_pool/future.h>
 #include <functional>
 
 using future::Future;

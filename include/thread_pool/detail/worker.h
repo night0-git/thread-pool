@@ -1,8 +1,8 @@
 #pragma once
 
 #include "deque/ring_buffer.h"
-#include "task.h"
-#include "deque/deque.h"
+#include <thread_pool/detail/task.h>
+#include <thread_pool/detail/deque.h>
 #include <thread>
 
 using task::Task;
