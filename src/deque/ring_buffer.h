@@ -3,18 +3,15 @@
 #include "utils/mem_ord.h"
 #include <atomic>
 
-namespace task {
-    struct Task;
-}
-using task::Task;
+namespace tp::detail {
+
+struct Task;
 
 // Test-only global variable to track the number of TaskRing
 // instances, which corresponds to the number of deque resizes.
 #ifdef TEST
 inline std::atomic<int> num_instances { 0 };
 #endif
-
-namespace deque {
 
 class TaskRing {
 private:

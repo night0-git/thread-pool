@@ -3,7 +3,8 @@
 #include <chrono>
 #include <latch>
 
-using thread_pool::ThreadPool;
+using tp::ThreadPool;
+using tp::Future;
 
 void long_computation() {
     volatile std::uint64_t result = 0;

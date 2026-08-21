@@ -1,6 +1,7 @@
 #include <thread_pool/detail/scheduler.h>
 #include <endian.h>
-using scheduler::Scheduler;
+
+namespace tp::detail {
 
 Scheduler::Scheduler(int num_workers) {
     workers.reserve(num_workers);
@@ -99,4 +100,6 @@ void Scheduler::worker_loop(size_t worker_id) {
             t->execute();
         }
     }
+}
+
 }

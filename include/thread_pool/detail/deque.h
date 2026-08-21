@@ -3,7 +3,7 @@
 #include "deque/ring_buffer.h"
 #include <atomic>
 
-namespace deque {
+namespace tp::detail {
 
 class TaskDeque {
 private:

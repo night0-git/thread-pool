@@ -1,10 +1,10 @@
 #include "utils.h"
 #include <thread_pool/future.h>
 
-using future::Future, future::Status, future::Promise;
+using tp::Future, tp::Status, tp::Promise;
 
 TEST_CASE("Non-void future complete and poll", "[future]") {
-    auto state = std::make_shared<future::State<int>>();
+    auto state = std::make_shared<tp::State<int>>();
     Future<int> fut(state);
     Promise<int> prom(state);
 
@@ -21,7 +21,7 @@ TEST_CASE("Non-void future complete and poll", "[future]") {
 }
 
 TEST_CASE("void future complete and poll", "[future]") {
-    auto state = std::make_shared<future::State<void>>();
+    auto state = std::make_shared<tp::State<void>>();
     Future<void> fut(state);
     Promise<void> prom(state);
 
@@ -38,7 +38,7 @@ TEST_CASE("void future complete and poll", "[future]") {
 }
 
 TEST_CASE("Future get blocking", "[future]") {
-    auto state = std::make_shared<future::State<int>>();
+    auto state = std::make_shared<tp::State<int>>();
     Future<int> fut(state);
     Promise<int> prom(state);
 

@@ -7,8 +7,8 @@
 #include <vector>
 #include <latch>
 
-using deque::TaskDeque;
-using task::TaskAction, task::Task;
+using tp::detail::TaskDeque;
+using tp::detail::TaskAction, tp::detail::Task;
 
 TEST_CASE("Deque operations and resize", "[deque]") {
     for (int i = 0; i < 100; i++) {
@@ -61,7 +61,7 @@ TEST_CASE("Deque old buffers are reclaimed", "[deque]") {
     constexpr size_t num_tasks = capacity << expected_resizes;
     {
         TaskDeque deque(capacity);
-        REQUIRE(num_instances == 1);
+        REQUIRE(tp::detail::num_instances == 1);
 
         TaskAction foo_action = [] {
             int a = 5;
@@ -71,7 +71,7 @@ TEST_CASE("Deque old buffers are reclaimed", "[deque]") {
             deque.push(std::make_unique<Task>(foo_action));
         }
 
-        REQUIRE(num_instances == expected_resizes + 1);
+        REQUIRE(tp::detail::num_instances == expected_resizes + 1);
     }
-    REQUIRE(num_instances == 0);
+    REQUIRE(tp::detail::num_instances == 0);
 }

@@ -1,6 +1,6 @@
 #include "deque/ring_buffer.h"
 
-using deque::TaskRing;
+namespace tp::detail {
 
 std::unique_ptr<TaskRing> TaskRing::grow(
     std::unique_ptr<TaskRing> old_ring,
@@ -15,4 +15,6 @@ std::unique_ptr<TaskRing> TaskRing::grow(
     new_ring->prev = std::move(old_ring);
 
     return std::unique_ptr<TaskRing>(new_ring);
+}
+
 }

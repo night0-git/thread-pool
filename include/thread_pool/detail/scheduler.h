@@ -5,11 +5,7 @@
 #include <thread_pool/detail/deque.h>
 #include <vector>
 
-using task::Task;
-using worker::Worker;
-using deque::TaskDeque;
-
-namespace scheduler {
+namespace tp::detail {
 
 constexpr size_t DEQUE_CAPACITY = 1024;
 

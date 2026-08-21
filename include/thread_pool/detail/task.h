@@ -1,11 +1,8 @@
 #pragma once
 
-#include <thread_pool/future.h>
 #include <functional>
 
-using future::Future;
-
-namespace task {
+namespace tp::detail {
 
 using TaskAction = std::function<void()>;
 

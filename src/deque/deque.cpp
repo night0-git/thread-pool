@@ -1,8 +1,7 @@
 #include <thread_pool/detail/deque.h>
 #include <thread_pool/detail/task.h>
 
-using deque::TaskDeque;
-using task::Task;
+namespace tp::detail {
 
 void TaskDeque::push(std::unique_ptr<Task> task) {
     const size_t b = bottom.load(utils::RELAXED);
@@ -89,4 +88,6 @@ std::unique_ptr<Task> TaskDeque::steal() {
     }
 
     return std::unique_ptr<Task>(stolen);
+}
+
 }

@@ -1,14 +1,10 @@
 #pragma once
 
-#include "deque/ring_buffer.h"
 #include <thread_pool/detail/task.h>
 #include <thread_pool/detail/deque.h>
 #include <thread>
 
-using task::Task;
-using deque::TaskDeque;
-
-namespace worker {
+namespace tp::detail {
 
 struct Worker {
     size_t id;
