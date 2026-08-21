@@ -7,11 +7,11 @@ namespace tp::detail {
 
 struct Task;
 
-// Test-only global variable to track the number of TaskRing
-// instances, which corresponds to the number of deque resizes.
-#ifdef TEST
+// Instance counter used by tests to verify that old buffers
+// (from resizes) are reclaimed. Always compiled so that the
+// class layout stays identical across TUs, the cost is two
+// relaxed atomic ops per ring creation/destruction.
 inline std::atomic<int> num_instances { 0 };
-#endif
 
 class TaskRing {
 private:
@@ -25,16 +25,12 @@ private:
 public:
     explicit TaskRing(size_t capacity)
     : cap(capacity) {
-        #ifdef TEST
         num_instances.fetch_add(1, std::memory_order_relaxed);
-        #endif
     };
 
-    #ifdef TEST
     ~TaskRing() {
         num_instances.fetch_sub(1, std::memory_order_relaxed);
     };
-    #endif
 
     size_t capacity() const { return cap; };
 
