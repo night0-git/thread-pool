@@ -1,6 +1,6 @@
 # Introduction
 
-This is an educational work-stealing thread pool in C++ for me to learn more about concurrency primitives such as future, promise, threads, and also lock-free programming.
+This is an *educational* work-stealing thread pool in C++ for me to learn more about concurrency primitives such as future, promise, threads, and also lock-free programming.
 
 # Project overview
 
