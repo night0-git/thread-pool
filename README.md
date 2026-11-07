@@ -9,6 +9,37 @@ The interface provided is simply a `ThreadPool` for user to submit tasks to be e
 The core mechanic of task allocation is that a thread will try to steal from other threads after it has exhausted its own pool. A lock-free single producer - multiple consumer (SPMC) deque is used to hold tasks, which was the hardest part to implement.
 
 # Usage
+
+### Example
+
+```cpp
+#include <iostream>
+#include <thread_pool/thread_pool.h>
+
+int main() {
+    // Create a thread pool with 4 worker threads.
+    tp::ThreadPool pool(4);
+
+    // Submit a task that returns a value.
+    tp::Future<int> fut1 = pool.submit([]() {
+        return 42;
+    });
+
+    // Submit a void task.
+    tp::Future<void> fut2 = pool.submit([]() {
+        std::cout << "Task executed asynchronously\n";
+    });
+
+    // Wait for the results.
+    std::cout << "Result: " << fut1.get() << '\n';
+    fut2.get();
+
+    return 0;
+}
+```
+
+### Installation
+
 The library could be installed via CMake:
 ```CMake
 find_package(thread-pool REQUIRED)

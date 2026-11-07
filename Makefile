@@ -1,7 +1,7 @@
 DB_TARGET = bin/debug/tests
 RL_TARGET = bin/release/tests
 
-.PHONY: all test debug release tsan
+.PHONY: all debug release tsan
 
 all: release
 
