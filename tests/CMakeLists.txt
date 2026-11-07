@@ -8,14 +8,13 @@ FetchContent_Declare(
   GIT_TAG        v3.8.1
 )
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS OFF)
 FetchContent_MakeAvailable(Catch2)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(tests
   ut_future.cpp
   ut_deque.cpp
   it_thread_pool.cpp
+  stress_tests.cpp
 )
 target_link_libraries(tests PRIVATE
   thread_pool

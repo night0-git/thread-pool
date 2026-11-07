@@ -19,11 +19,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG
 add_library(project_options INTERFACE)
 target_compile_options(project_options INTERFACE
   -Wall -Wextra -Wpedantic
+  $<$<CONFIG:Debug>:-fsanitize=thread>
+  $<$<CONFIG:Debug>:-Wno-tsan>
 )
-if (ENABLE_TSAN)
-  target_compile_options(project_options INTERFACE -fsanitize=thread)
-  target_link_options(project_options INTERFACE -fsanitize=thread)
-endif()
+target_link_options(project_options INTERFACE
+  $<$<CONFIG:Debug>:-fsanitize=thread>
+)
 
 # The core library
 add_library(thread_pool
@@ -94,3 +95,5 @@ install(
 )
 
 add_subdirectory(tests)
+add_subdirectory(bench)
+

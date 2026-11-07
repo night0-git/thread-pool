@@ -93,3 +93,48 @@ The whole point of a work-stealing architecture, where each worker has its own t
 That is why the Chase-Lev deque is an integral part of the thread pool. It ensures each task pool is thread-safe without requiring a mutex around every operation. The deque is designed specifically for work stealing: its owning worker exclusively pushes and pops from one end, while other workers concurrently steal from the other end. This allows the common owner operations to proceed with minimal synchronization. Workers can then, usually, operate on their local task pools independently, preserving the scalability that motivated the work-stealing architecture in the first place.
 
 A `ThreadPool` is a high level wrapper around a `Scheduler`, and is the primary interface that users interact with. It provides the `submit` method for submitting tasks to the scheduler, which returns a `Future` that can be used to await the task's completion.
+
+# Benchmarks
+
+Benchmarks were performed using Catch2 on a 20-thread machine (Release build, `-O3`). The work-stealing pool is evaluated against two baselines:
+1. A standard worker pool with a single shared queue protected by `std::mutex` and `std::condition_variable`.
+2. `std::async(std::launch::async, ...)`.
+
+The benchmarks can be reproduced by running `make bench`. Full benchmark logs and raw Catch2 output are archived in [bench/RESULTS.md](bench/RESULTS.md).
+
+### 1. High-throughput independent tasks (20 workers, 20,000 tasks)
+
+Evaluates submission latency, task deque dispatch, and lock contention under high concurrency:
+
+| Architecture | Execution Time (mean) | Throughput |
+| :--- | :--- | :--- |
+| **Work-Stealing Pool** | 21.50 ms | **~930,000 tasks/sec** |
+| **Mutex Shared-Queue Pool** | 29.72 ms | ~672,000 tasks/sec |
+
+* **Result:** The work-stealing pool achieves **~28% lower latency (1.38x higher throughput)**. As worker count increases, a centralized mutex queue becomes a severe synchronization bottleneck as all threads contend for the same lock.
+
+### 2. Thread count scaling (CPU compute)
+
+Evaluates speedup and scaling efficiency across 1, 2, 4, and 8 worker threads on 200 compute-bound tasks:
+
+| Workers | Work-Stealing Pool | Mutex Pool | Work-Stealing Speedup |
+| :---: | :---: | :---: | :---: |
+| 1 | 152.07 ms | 156.05 ms | 1.00x (Baseline) |
+| 2 | 76.66 ms | 77.66 ms | **1.98x** (Near-ideal linear) |
+| 4 | 32.94 ms | 31.44 ms | **4.61x** (Superlinear cache scaling) |
+| 8 | 10.75 ms | 11.82 ms | **14.14x** |
+
+#### Analysis & Trade-offs
+- **Work-Stealing wins when:** Under high thread counts (8+ threads) or fine-grained/imbalanced workloads, work stealing avoids centralized mutex contention by keeping tasks local to worker queues.
+- **Mutex Pools win when:** On coarse, compute-heavy tasks with low thread counts (e.g., 4 workers), mutex contention is negligible. Here, the mutex pool can be slightly faster (31.4 ms vs 32.9 ms) because the worker loop only checks one queue, whereas work stealing incurs minor constant overhead checking local deque &rarr; global injection &rarr; victim worker deques.
+
+### 3. Comparison with `std::async`
+
+Evaluates asynchronous task execution overhead on batches of compute tasks:
+
+| Framework | Execution Time (mean) | Speedup vs `std::async` |
+| :--- | :--- | :--- |
+| **Work-Stealing Pool** | 1.54 ms | **2.04x faster** |
+| **`std::async(std::launch::async)`** | 3.14 ms | 1.00x |
+
+This thread pool is **more than twice as fast** as `std::async`. Persistent worker threads and lock-free deques avoid the operating system thread creation/destruction costs associated with `std::launch::async`.
