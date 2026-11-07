@@ -4,7 +4,7 @@ This is an educational work-stealing thread pool in C++ for me to learn more abo
 
 # Project overview
 
-The interface provided is simply a `ThreadPool` for user to submit tasks to be executed on the background, and a `Future` type to poll the result of the task.
+The interface provided is simply a `ThreadPool` for user to submit tasks to be executed on the background, and a `Future` type to wait for the result of the task.
 
 The core mechanic of task allocation is that a thread will try to steal from other threads after it has exhausted its own pool. A lock-free single producer - multiple consumer (SPMC) deque is used to hold tasks, which was the hardest part to implement.
 
@@ -31,13 +31,12 @@ target_link_libraries(<your executable> PRIVATE thread_pool::thread_pool)
 ```
 
 # Implementation details
->This part is for those who may be insterested in how the code works (or for myself in the future).
 
 ### 1. Custom future
 
 A simplified version of the standard library's `future` and `promise` is implemented for this project: `Future` and `Promise`.
 
-How they work (together): A `Future` and a `Promise` share a unified `State` which both can read and write to. `Future` is held by the customer and it contains method to poll the result, while a `Promise` is what the producer uses to "complete" its corresponding `Future`. In the code, a conditional variable to used by the `Future` to block the thread while waiting for `Promise` to complete it (during poll).
+How they work (together): A `Future` and a `Promise` share a unified `State` which both can read and write to. `Future` is held by the consumer and it contains method to poll the result, while a `Promise` is what the producer uses to "complete" its corresponding `Future`. In the code, a conditional variable is used by the `Future` to block the thread while waiting for `Promise` to complete it (during poll).
 
 A future is the result of a submitted task, so it may not contain a value (void). In C++ this is handled through 'template specialization' for `void` type.
 
@@ -45,7 +44,7 @@ A future is the result of a submitted task, so it may not contain a value (void)
 
 Also called a Chase-Lev deque, it is a double-ended queue implemented purely with atomic primitives, which makes it completely thread-safe without a mutex.
 
-A deque provides a `pop`/`push` method that only the owner thread can use to take tasks from the bottom, and a `steal` method that any thread (thief) can use to steal tasks from the top. This separation means that the owner and thieves normally operate on different ends of the deque. The only case where they may contend for the same task is when exactly one task remains, which can be resolved by a CAS.
+A deque provides a `pop`/`push` method that only the owner thread can use to take tasks from the bottom, and a `steal` method that any thread (thief) can use to steal tasks from the top. This separation means that the owner and thieves normally operate on different ends of the deque; the only case where they may contend for the same task is when exactly one task remains, which can be resolved by a CAS.
 
 The implementation is highly formulated, revolving around the 'memory ordering' property of the CPU.
 
