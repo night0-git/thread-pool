@@ -8,7 +8,9 @@ FetchContent_Declare(
   GIT_TAG        v3.8.1
 )
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS OFF)
 FetchContent_MakeAvailable(Catch2)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(tests
   ut_future.cpp
