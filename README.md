@@ -108,33 +108,49 @@ Evaluates submission latency, task deque dispatch, and lock contention under hig
 
 | Architecture | Execution Time (mean) | Throughput |
 | :--- | :--- | :--- |
-| **Work-Stealing Pool** | 21.50 ms | **~930,000 tasks/sec** |
-| **Mutex Shared-Queue Pool** | 29.72 ms | ~672,000 tasks/sec |
+| **Work-Stealing Pool** | **20.80 ms** | **~962,000 tasks/sec** |
+| **Mutex Shared-Queue Pool** | 28.86 ms | ~693,000 tasks/sec |
 
-* **Result:** The work-stealing pool achieves **~28% lower latency (1.38x higher throughput)**. As worker count increases, a centralized mutex queue becomes a severe synchronization bottleneck as all threads contend for the same lock.
+* **Result:** The work-stealing pool achieves **~28% lower latency (1.39x higher throughput)**. As worker count increases, a centralized mutex queue becomes a synchronization bottleneck as all threads contend for the same lock.
 
-### 2. Thread count scaling (CPU compute)
+### 2. Thread count scaling
 
-Evaluates speedup and scaling efficiency across 1, 2, 4, and 8 worker threads on 200 compute-bound tasks:
+The pool is evaluated against a *non-stealing*, *mutex-based* thread pool.
 
-| Workers | Work-Stealing Pool | Mutex Pool | Work-Stealing Speedup |
-| :---: | :---: | :---: | :---: |
-| 1 | 152.07 ms | 156.05 ms | 1.00x (Baseline) |
-| 2 | 76.66 ms | 77.66 ms | **1.98x** (Near-ideal linear) |
-| 4 | 32.94 ms | 31.44 ms | **4.61x** (Superlinear cache scaling) |
-| 8 | 10.75 ms | 11.82 ms | **14.14x** |
+#### Uniform compute-bound tasks
 
-#### Analysis & Trade-offs
-- **Work-Stealing wins when:** Under high thread counts (8+ threads) or fine-grained/imbalanced workloads, work stealing avoids centralized mutex contention by keeping tasks local to worker queues.
-- **Mutex Pools win when:** On coarse, compute-heavy tasks with low thread counts (e.g., 4 workers), mutex contention is negligible. Here, the mutex pool can be slightly faster (31.4 ms vs 32.9 ms) because the worker loop only checks one queue, whereas work stealing incurs minor constant overhead checking local deque &rarr; global injection &rarr; victim worker deques.
+Evaluates speedup and scaling efficiency across 1, 2, 4, and 8 worker threads on 10,000 compute-bound tasks:
 
-### 3. Comparison with `std::async`
+| Workers | Work-Stealing Pool | WS Scaling | Mutex Pool | Mutex Scaling  | WS vs Mutex Speedup |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| 1 | 76.20 ms | 1.00x (Baseline) | 76.63 ms | 1.00x (Baseline) | 1.01x |
+| 2 | 38.65 ms | **1.97x** (Near-ideal linear) | 39.99 ms | 1.92x | 1.03x |
+| 4 | 20.36 ms | **3.74x** (94% efficiency) | 21.25 ms | 3.61x | 1.04x |
+| 8 | 10.88 ms | **7.01x** (88% efficiency) | 13.80 ms | 5.55x | 1.27x |
 
-Evaluates asynchronous task execution overhead on batches of compute tasks:
+
+While mutex pools remain competitive at lower concurrency where lock contention is low, lock contention and wake-up serialization become a bottleneck at 8 workers.
+
+### 3. Thread count scaling on non-uniform tasks
+
+Evaluates dynamic load balancing across 1, 2, 4, and 8 worker threads on 10,000 tasks with heavy-tailed / exponentially distributed workloads (mean ~5,000 iters, varying from 100 to ~44,000 iters):
+
+| Workers | Work-Stealing Pool | WS Scaling (vs 1W) | Mutex Pool | Mutex Scaling (vs 1W) | WS vs Mutex Speedup |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| 1 | 75.80 ms | 1.00x (Baseline) | 77.25 ms | 1.00x (Baseline) | 1.02x |
+| 2 | 38.85 ms | **1.95x** | 39.77 ms | 1.94x | 1.02x |
+| 4 | 20.29 ms | **3.74x** | 21.26 ms | 3.63x | 1.05x |
+| 8 | 11.15 ms | **6.80x** | 13.57 ms | 5.69x | **1.22x** |
+
+Work-stealing pool works well on imbalanced workloads. When tasks have high duration variance, idle workers dynamically *steal* remaining tasks from busy workers' local deques, making the pool scales better than a non-stealing mutex-based pool.
+
+### 4. Comparison with `std::async`
+
+Evaluates asynchronous task execution overhead on batches of compute tasks (1,000 tasks):
 
 | Framework | Execution Time (mean) | Speedup vs `std::async` |
 | :--- | :--- | :--- |
-| **Work-Stealing Pool** | 1.54 ms | **2.04x faster** |
-| **`std::async(std::launch::async)`** | 3.14 ms | 1.00x |
+| **Work-Stealing Pool (Persistent)** | **1.12 ms** | **10.04x faster** |
+| **`std::async(std::launch::async)`** | 11.21 ms | 1.00x |
 
-This thread pool is **more than twice as fast** as `std::async`. Persistent worker threads and lock-free deques avoid the operating system thread creation/destruction costs associated with `std::launch::async`.
+Because `std::async(std::launch::async)` spawns does not utilize a thread pool and spawns a new thread every time, this thread pool is easily **10 times faster** than `std::async`. Persistent worker threads and lock-free deques eliminate the operating system thread creation, stack allocation, and teardown costs associated with `std::launch::async`.
